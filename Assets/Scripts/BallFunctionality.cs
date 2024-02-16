@@ -35,40 +35,53 @@ public class BallFunctionality : MonoBehaviour
         int southWest = 210;
         int west = 270;
         int northWest = 330;
-        int closestAngle = int.MaxValue;
+        float closestAngle = int.MaxValue;
+        int chosenAngle = 0;
         int[] directions = { northEast, east, southEast, southWest, west, northWest};
 
         foreach(int direction in directions)
         {
-            float difference = Mathf.Abs(direction - Vector2.Angle(incomingBallPosition, this.transform.position));
+            float difference = Mathf.Abs(direction - ((Vector2.SignedAngle(incomingBallPosition - (Vector2)transform.position, transform.up)+360) %360));
             if(closestAngle > difference)
             {
-                closestAngle = (int)difference;
+                closestAngle = difference;
+                chosenAngle = direction;
             }
         }
 
+        Debug.Log(chosenAngle);
+        float closestRadAngle = Mathf.Deg2Rad * chosenAngle;
+        Vector2 tempPosition = this.transform.position;
+        Vector2 rotatedBallWidth = new(0, ballWidth);
+        rotatedBallWidth = new(rotatedBallWidth.x * Mathf.Cos(closestRadAngle) - rotatedBallWidth.y * Mathf.Sin(closestRadAngle), rotatedBallWidth.x * Mathf.Sin(closestRadAngle) + rotatedBallWidth.y * Mathf.Cos(closestRadAngle));
+        rotatedBallWidth.x = rotatedBallWidth.x * -1;
+        tempPosition += rotatedBallWidth;
 
-        var rotation = Quaternion.AngleAxis(closestAngle, Vector3.up);
-        Debug.Log(rotation.ToString());
-        Debug.Log((Vector2)this.transform.position + " + " + (Vector2)(rotation * new Vector3(0.0f, ballWidth)));
-        return (Vector2)this.transform.position + (Vector2)(rotation * new Vector3(0.0f,ballWidth));
+        return tempPosition;
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (moving == false) return;
         if (collision.gameObject.GetComponent<BallFunctionality>() == null) return;
-        this.transform.position = AttachPosition((Vector2)collision.gameObject.transform.position);
         DisableGravity();
+        transform.position = collision.gameObject.GetComponent<BallFunctionality>().AttachPosition((Vector2)transform.position);
     }
 
     private void EnableGravity()
     {
         gameObject.GetComponent<Rigidbody2D>().isKinematic = false;
+        gameObject.GetComponent<Rigidbody2D>().constraints = RigidbodyConstraints2D.FreezeRotation;
+        gameObject.GetComponent<Rigidbody2D>().gravityScale = 1f;
+        moving = true;
     }
 
     private void DisableGravity()
     {
         gameObject.GetComponent<Rigidbody2D>().isKinematic = true;
+        gameObject.GetComponent<Rigidbody2D>().constraints = RigidbodyConstraints2D.FreezeAll;
+        gameObject.GetComponent<Rigidbody2D>().gravityScale = 0;
+        if (gameObject.GetComponent<MoveComponent>() != null) gameObject.GetComponent<MoveComponent>().enabled = false;
+        moving = false;
     }
 }
